@@ -1,1 +1,3 @@
-.vscode/
+.vscode
+mainpruebas.cpp
+*.out
