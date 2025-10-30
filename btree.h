@@ -134,7 +134,17 @@ class BTree {
   }//inserta un elemento
 
   void remove(TK key);//elimina un elemento
-  int height();//altura del arbol. Considerar altura 0 para arbol vacio
+  int height(){
+    if (!root) return 0;
+    int h = 1;
+    Node<TK>* temp = root;
+    while (!temp->leaf) {
+      temp = temp->children[0];
+      h++;
+    }
+    return h;
+  };
+//altura del arbol. Considerar altura 0 para arbol vacio
   string toString(const string& sep);  // recorrido inorder
   vector<TK> rangeSearch(TK begin, TK end);
 
