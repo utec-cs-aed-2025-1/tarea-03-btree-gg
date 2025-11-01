@@ -142,8 +142,8 @@ class BTree {
       temp = temp->children[0];
       h++;
     }
-    return h;
-  };
+    return h;
+  };
 //altura del arbol. Considerar altura 0 para arbol vacio
   string toString(const string& sep);  // recorrido inorder
   vector<TK> rangeSearch(TK begin, TK end);
