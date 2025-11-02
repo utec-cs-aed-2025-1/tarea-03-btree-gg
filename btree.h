@@ -218,8 +218,8 @@ class BTree {
         idxParent = i;
         node = node->children[i];
     }
-  }  
-  ;//elimina un elemento
+  }//elimina un elemento
+
   int height(){
     if (!root) return 0;
     int h = 1;
@@ -229,23 +229,45 @@ class BTree {
       h++;
     }
     return h;
-  };
-//altura del arbol. Considerar altura 0 para arbol vacio
-  string toString(const string& sep);  // recorrido inorder
-  vector<TK> rangeSearch(TK begin, TK end);
+  }//altura del arbol. Considerar altura 0 para arbol vacio
 
-  TK minKey();  // minimo valor de la llave en el arbol
-  TK maxKey();  // maximo valor de la llave en el arbol
-  void clear(); // eliminar todos lo elementos del arbol
-  int size(); // retorna el total de elementos insertados  
+  string toString(const string& sep){
+
+  }// recorrido inorder
+
+  vector<TK> rangeSearch(TK begin, TK end){
+
+  }
+
+  TK minKey(){
+  }// minimo valor de la llave en el arbol
+
+  TK maxKey(){
+
+  }// maximo valor de la llave en el arbol
+
+  void clear(){
+
+  }// eliminar todos lo elementos del arbol
+  
+  int size(){
+
+  }// retorna el total de elementos insertados  
   
   // Construya un árbol B a partir de un vector de elementos ordenados
   template<typename T>
-  static BTree* build_from_ordered_vector(vector<T> elements, int x){};
-  // Verifique las propiedades de un árbol B
-  bool check_properties();
+  static BTree* build_from_ordered_vector(vector<T> elements, int x){
 
-  ~BTree();     // liberar memoria
+  }
+
+  // Verifique las propiedades de un árbol B
+  bool check_properties(){
+
+  }
+
+  ~BTree(){
+
+  }// liberar memoria
 };
 
 #endif
