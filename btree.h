@@ -240,10 +240,25 @@ class BTree {
   }
 
   TK minKey(){
+   if (!root) {
+    throw runtime_error("El árbol está vacío");
+  }
+   Node<TK>* temp = root;
+   while (!temp->leaf) {
+    temp = temp->children[0];  
+  }
+   return temp->keys[0];
   }// minimo valor de la llave en el arbol
 
   TK maxKey(){
-
+   if (!root) {
+    throw runtime_error("El árbol está vacío");
+  }
+   Node<TK>* temp = root;
+   while (!temp->leaf) {
+    temp = temp->children[temp->count];  
+  }
+   return temp->keys[temp->count-1];
   }// maximo valor de la llave en el arbol
 
   void clear(){
