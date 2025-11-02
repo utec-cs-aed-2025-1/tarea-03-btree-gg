@@ -133,7 +133,93 @@ class BTree {
     }
   }//inserta un elemento
 
-  void remove(TK key);//elimina un elemento
+  void remove(TK key){
+    if (!root || !search(key)) return; // no hay nada que borrar
+
+    Node<TK>* node = root;
+    Node<TK>* parent = nullptr;
+    int idxParent = -1;
+
+    while (node) {
+        int i = 0;
+        while (i < node->count && key > node->keys[i]) i++;
+
+        // encontramos la clave
+        if (i < node->count && key == node->keys[i]) {
+
+            // caso: nodo hoja 
+            if (node->leaf) {
+                // eliminar clave
+                for (int j = i; j < node->count - 1; j++)
+                    node->keys[j] = node->keys[j + 1];
+                node->count--; n--;
+
+                int minKeys = (M / 2) - 1;
+                if (node == root || node->count >= minKeys) return; // cumple propiedades
+
+                // verificar hermanos
+                Node<TK>* left = (idxParent > 0) ? parent->children[idxParent - 1] : nullptr;
+                Node<TK>* right = (idxParent < parent->count) ? parent->children[idxParent + 1] : nullptr;
+
+                // rotar izquierda
+                if (left && left->count > minKeys) {
+                    for (int j = node->count; j > 0; j--)
+                        node->keys[j] = node->keys[j - 1];
+                    node->keys[0] = parent->keys[idxParent - 1];
+                    parent->keys[idxParent - 1] = left->keys[left->count - 1];
+                    left->count--; node->count++;
+                }
+                // rotar derecha
+                else if (right && right->count > minKeys) {
+                    node->keys[node->count++] = parent->keys[idxParent];
+                    parent->keys[idxParent] = right->keys[0];
+                    for (int j = 0; j < right->count - 1; j++)
+                        right->keys[j] = right->keys[j + 1];
+                    right->count--;
+                }
+                // fusionar
+                else {
+                    Node<TK>* target = left ? left : node;
+                    Node<TK>* donor = left ? node : right;
+                    int pKey = left ? idxParent - 1 : idxParent;
+
+                    target->keys[target->count++] = parent->keys[pKey];
+                    for (int j = 0; j < donor->count; j++)
+                        target->keys[target->count + j] = donor->keys[j];
+                    target->count += donor->count;
+
+                    for (int j = pKey; j < parent->count - 1; j++)
+                        parent->keys[j] = parent->keys[j + 1];
+                    for (int j = pKey + 1; j <= parent->count; j++)
+                        parent->children[j] = parent->children[j + 1];
+                    parent->count--;
+                    delete donor;
+
+                    if (parent == root && parent->count == 0) {
+                        root = target;
+                        delete parent;
+                    }
+                }
+                return;
+            }
+
+            // caso: nodo interno
+            else {
+                Node<TK>* succ = node->children[i + 1];
+                while (!succ->leaf) succ = succ->children[0];
+                TK succKey = succ->keys[0];
+                node->keys[i] = succKey;
+                remove(succKey);
+                return;
+            }
+        }
+
+        parent = node;
+        idxParent = i;
+        node = node->children[i];
+    }
+  }  
+  ;//elimina un elemento
   int height(){
     if (!root) return 0;
     int h = 1;
