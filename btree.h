@@ -232,7 +232,7 @@ class BTree {
   }//altura del arbol. Considerar altura 0 para arbol vacio
 
   string toString(const string& sep){
-
+    return "";
   }// recorrido inorder
 
   vector<TK> rangeSearch(TK begin, TK end){
@@ -267,7 +267,7 @@ class BTree {
 
   // Verifique las propiedades de un árbol B
   bool check_properties(){
-
+    return false;
   }
 
   ~BTree(){
