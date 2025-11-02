@@ -247,11 +247,16 @@ class BTree {
   }// maximo valor de la llave en el arbol
 
   void clear(){
-
+    if(root != nullptr){
+      root->killSelf(); // metodo del node
+      delete root;
+      root=nullptr;
+    }
+    n = 0;
   }// eliminar todos lo elementos del arbol
   
   int size(){
-
+    return n;
   }// retorna el total de elementos insertados  
   
   // Construya un árbol B a partir de un vector de elementos ordenados
@@ -266,7 +271,7 @@ class BTree {
   }
 
   ~BTree(){
-
+    clear();
   }// liberar memoria
 };
 
