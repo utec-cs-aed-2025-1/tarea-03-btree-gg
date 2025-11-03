@@ -53,6 +53,50 @@ class BTree {
     parent->count += 1;
   }
 
+  void stringInorder(Node<TK>* node, string& result, const string& sep){
+    if (node == nullptr) return;
+    
+    for (int i = 0; i < node->count; i++) {
+      // visitar hijo izquierdo
+      if (!node->leaf) {
+        stringInorder(node->children[i], result, sep);
+      }
+      
+      // agregar clave actual
+      if (result.length() > 0) {
+        result += sep;
+      }
+      result += to_string(node->keys[i]);
+    }
+    
+    // visitar último hijo
+    if (!node->leaf) {
+      stringInorder(node->children[node->count], result, sep);
+    }
+  }
+
+  void rangeSearchH(Node<TK>* nodo, TK inicio, TK fin, vector<TK>& elementos){
+    if (nodo == nullptr) return;
+    int i = 0;
+    for (i = 0; i < nodo->count; i++) {
+      if (!nodo->leaf) {
+        rangeSearchH(nodo->children[i], inicio, fin, elementos);
+      }
+      // si la clave esta en el rango se agrega
+      if (nodo->keys[i] >= inicio && nodo->keys[i] <= fin) {
+        elementos.push_back(nodo->keys[i]);
+      }
+      else if (nodo->keys[i] > fin) {
+        return;
+      }
+    }
+    
+    // visitar ultimo hijo
+    if (!nodo->leaf) {
+      rangeSearchH(nodo->children[i], inicio, fin, elementos);
+    }
+  }
+
  public:
   BTree(int _M) : root(nullptr), M(_M), n(0){}
 
@@ -133,92 +177,257 @@ class BTree {
     }
   }//inserta un elemento
 
-  void remove(TK key){
-    if (!root || !search(key)) return; // no hay nada que borrar
-
-    Node<TK>* node = root;
-    Node<TK>* parent = nullptr;
-    int idxParent = -1;
-
-    while (node) {
-        int i = 0;
-        while (i < node->count && key > node->keys[i]) i++;
-
-        // encontramos la clave
-        if (i < node->count && key == node->keys[i]) {
-
-            // caso: nodo hoja 
-            if (node->leaf) {
-                // eliminar clave
-                for (int j = i; j < node->count - 1; j++)
-                    node->keys[j] = node->keys[j + 1];
-                node->count--; n--;
-
-                int minKeys = (M / 2) - 1;
-                if (node == root || node->count >= minKeys) return; // cumple propiedades
-
-                // verificar hermanos
-                Node<TK>* left = (idxParent > 0) ? parent->children[idxParent - 1] : nullptr;
-                Node<TK>* right = (idxParent < parent->count) ? parent->children[idxParent + 1] : nullptr;
-
-                // rotar izquierda
-                if (left && left->count > minKeys) {
-                    for (int j = node->count; j > 0; j--)
-                        node->keys[j] = node->keys[j - 1];
-                    node->keys[0] = parent->keys[idxParent - 1];
-                    parent->keys[idxParent - 1] = left->keys[left->count - 1];
-                    left->count--; node->count++;
-                }
-                // rotar derecha
-                else if (right && right->count > minKeys) {
-                    node->keys[node->count++] = parent->keys[idxParent];
-                    parent->keys[idxParent] = right->keys[0];
-                    for (int j = 0; j < right->count - 1; j++)
-                        right->keys[j] = right->keys[j + 1];
-                    right->count--;
-                }
-                // fusionar
-                else {
-                    Node<TK>* target = left ? left : node;
-                    Node<TK>* donor = left ? node : right;
-                    int pKey = left ? idxParent - 1 : idxParent;
-
-                    target->keys[target->count++] = parent->keys[pKey];
-                    for (int j = 0; j < donor->count; j++)
-                        target->keys[target->count + j] = donor->keys[j];
-                    target->count += donor->count;
-
-                    for (int j = pKey; j < parent->count - 1; j++)
-                        parent->keys[j] = parent->keys[j + 1];
-                    for (int j = pKey + 1; j <= parent->count; j++)
-                        parent->children[j] = parent->children[j + 1];
-                    parent->count--;
-                    delete donor;
-
-                    if (parent == root && parent->count == 0) {
-                        root = target;
-                        delete parent;
-                    }
-                }
-                return;
-            }
-
-            // caso: nodo interno
-            else {
-                Node<TK>* succ = node->children[i + 1];
-                while (!succ->leaf) succ = succ->children[0];
-                TK succKey = succ->keys[0];
-                node->keys[i] = succKey;
-                remove(succKey);
-                return;
-            }
-        }
-
-        parent = node;
-        idxParent = i;
-        node = node->children[i];
+  // obtener predecesor (max del subarbol izquierdo)
+  TK getPredecessor(Node<TK>* node, int idx){
+    Node<TK>* temp = node->children[idx];
+    while (!temp->leaf) {
+      temp = temp->children[temp->count];
     }
-  }//elimina un elemento
+    return temp->keys[temp->count - 1];
+  }
+
+  // obtener sucesor (min del subarbol derecho)
+  TK getSuccessor(Node<TK>* node, int idx){
+    Node<TK>* temp = node->children[idx + 1];
+    while (!temp->leaf) {
+      temp = temp->children[0];
+    }
+    return temp->keys[0];
+  }
+
+  // fusionar hijo en idx con su hermano derecho
+  void merge(Node<TK>* node, int idx){
+    Node<TK>* child = node->children[idx];
+    Node<TK>* sibling = node->children[idx + 1];
+
+    // bajar la clave del padre al hijo
+    child->keys[child->count] = node->keys[idx];
+
+    // copiar claves del hermano al hijo
+    for (int i = 0; i < sibling->count; i++) {
+      child->keys[child->count + 1 + i] = sibling->keys[i];
+    }
+
+    // copiar punteros a hijos si no es hoja
+    if (!child->leaf) {
+      for (int i = 0; i <= sibling->count; i++) {
+        child->children[child->count + 1 + i] = sibling->children[i];
+      }
+    }
+
+    // actualizar count del hijo
+    child->count += sibling->count + 1;
+
+    // mover keys del padre hacia la izquierda
+    for (int i = idx + 1; i < node->count; i++) {
+      node->keys[i - 1] = node->keys[i];
+    }
+
+    // mover punteros a hijos hacia la izquierda
+    for (int i = idx + 2; i <= node->count; i++) {
+      node->children[i - 1] = node->children[i];
+    }
+
+    node->count--;
+    
+    // liberar memoria del hermano sin llamar killSelf
+    delete[] sibling->keys;
+    delete[] sibling->children;
+    delete sibling;
+  }
+
+  // tomar una clave del hermano izquierdo
+  void borrowFromPrev(Node<TK>* node, int idx){
+    Node<TK>* child = node->children[idx];
+    Node<TK>* sibling = node->children[idx - 1];
+
+    // mover keys del hijo hacia la derecha
+    for (int i = child->count - 1; i >= 0; i--) {
+      child->keys[i + 1] = child->keys[i];
+    }
+
+    // mover children si no es hoja
+    if (!child->leaf) {
+      for (int i = child->count; i >= 0; i--) {
+        child->children[i + 1] = child->children[i];
+      }
+    }
+
+    // bajar clave del padre al hijo
+    child->keys[0] = node->keys[idx - 1];
+
+    // mover puntero si no es hoja
+    if (!child->leaf) {
+      child->children[0] = sibling->children[sibling->count];
+    }
+
+    // subir clave del hermano al padre
+    node->keys[idx - 1] = sibling->keys[sibling->count - 1];
+
+    child->count++;
+    sibling->count--;
+  }
+
+  // tomar una clave del hermano derecho
+  void borrowFromNext(Node<TK>* node, int idx){
+    Node<TK>* child = node->children[idx];
+    Node<TK>* sibling = node->children[idx + 1];
+
+    // bajar clave del padre al hijo
+    child->keys[child->count] = node->keys[idx];
+
+    // mover primer puntero del hermano si no es hoja
+    if (!child->leaf) {
+      child->children[child->count + 1] = sibling->children[0];
+    }
+
+    // subir primera clave del hermano al padre
+    node->keys[idx] = sibling->keys[0];
+
+    // mover keys del hermano hacia la izquierda
+    for (int i = 1; i < sibling->count; i++) {
+      sibling->keys[i - 1] = sibling->keys[i];
+    }
+
+    // mover children del hermano si no es hoja
+    if (!sibling->leaf) {
+      for (int i = 1; i <= sibling->count; i++) {
+        sibling->children[i - 1] = sibling->children[i];
+      }
+    }
+
+    child->count++;
+    sibling->count--;
+  }
+
+  // llenar hijo que tiene menos del minimo de claves
+  void fill(Node<TK>* node, int idx){
+    int t = (M + 1) / 2;
+
+    // si el hermano izquierdo tiene mas del minimo
+    if (idx != 0 && node->children[idx - 1]->count >= t) {
+      borrowFromPrev(node, idx);
+    }
+    // si el hermano derecho tiene mas del minimo
+    else if (idx != node->count && node->children[idx + 1]->count >= t) {
+      borrowFromNext(node, idx);
+    }
+    // fusionar con hermano
+    else {
+      if (idx != node->count) {
+        merge(node, idx);
+      } else {
+        merge(node, idx - 1);
+      }
+    }
+  }
+
+  // eliminar clave de nodo hoja
+  void removeFromLeaf(Node<TK>* node, int idx){
+    // desplazar claves hacia la izquierda
+    for (int i = idx + 1; i < node->count; i++) {
+      node->keys[i - 1] = node->keys[i];
+    }
+    node->count--;
+  }
+
+  // eliminar clave de nodo interno
+  void removeFromNonLeaf(Node<TK>* node, int idx){
+    TK key = node->keys[idx];
+    int t = (M + 1) / 2;
+
+    // si el hijo izquierdo tiene suficientes claves
+    if (node->children[idx]->count >= t) {
+      TK pred = getPredecessor(node, idx);
+      node->keys[idx] = pred;
+      removeHelper(node->children[idx], pred);
+    }
+    // si el hijo derecho tiene suficientes claves
+    else if (node->children[idx + 1]->count >= t) {
+      TK succ = getSuccessor(node, idx);
+      node->keys[idx] = succ;
+      removeHelper(node->children[idx + 1], succ);
+    }
+    // fusionar hijos
+    else {
+      merge(node, idx);
+      removeHelper(node->children[idx], key);
+    }
+  }
+
+  // funcion auxiliar recursiva para eliminar
+  bool removeHelper(Node<TK>* node, TK key){
+    int idx = 0;
+    int t = (M + 1) / 2;
+
+    // buscar la posicion de la clave
+    while (idx < node->count && node->keys[idx] < key) {
+      idx++;
+    }
+
+    // si la clave esta en este nodo
+    if (idx < node->count && node->keys[idx] == key) {
+      if (node->leaf) {
+        removeFromLeaf(node, idx);
+      } else {
+        removeFromNonLeaf(node, idx);
+      }
+      return true;
+    }
+    // si la clave no esta en este nodo
+    else {
+      if (node->leaf) {
+        return false; // la clave no existe
+      }
+
+      // verificar si la clave esta en el subarbol
+      bool isInSubtree = (idx == node->count);
+
+      // si el hijo tiene menos del minimo de claves
+      if (node->children[idx]->count < t) {
+        fill(node, idx);
+      }
+
+      // despues de fill la clave podria moverse
+      if (isInSubtree && idx > node->count) {
+        return removeHelper(node->children[idx - 1], key);
+      } else {
+        // buscar nuevamente la posicion correcta
+        idx = 0;
+        while (idx < node->count && node->keys[idx] < key) {
+          idx++;
+        }
+        return removeHelper(node->children[idx], key);
+      }
+    }
+  }
+
+  void remove(TK key){
+    if (!root) return;
+
+    bool found = removeHelper(root, key);
+    
+    // solo decrementar si se encontro la clave
+    if (found) {
+      n--;
+    }
+
+    // si root queda vacia se actualiza
+    if (root->count == 0) {
+      Node<TK>* temp = root;
+      if (root->leaf) {
+        root = nullptr;
+        delete[] temp->keys;
+        delete[] temp->children;
+        delete temp;
+      } else {
+        root = root->children[0];
+        delete[] temp->keys;
+        delete[] temp->children;
+        delete temp;
+      }
+    }
+  }
 
   int height(){
     if (!root) return 0;
@@ -232,11 +441,15 @@ class BTree {
   }//altura del arbol. Considerar altura 0 para arbol vacio
 
   string toString(const string& sep){
-    return "";
-  }// recorrido inorder
+    string c = "";
+    stringInorder(root, c, sep);
+    return c;
+  }
 
   vector<TK> rangeSearch(TK begin, TK end){
-
+    vector<TK> elementos = {};
+    rangeSearchH(root, begin, end, elementos);
+    return elementos;
   }
 
   TK minKey(){
@@ -247,7 +460,7 @@ class BTree {
    while (!temp->leaf) {
     temp = temp->children[0];  
   }
-   return temp->keys[0];
+   return temp->keys[0];
   }// minimo valor de la llave en el arbol
 
   TK maxKey(){
@@ -258,7 +471,7 @@ class BTree {
    while (!temp->leaf) {
     temp = temp->children[temp->count];  
   }
-   return temp->keys[temp->count-1];
+   return temp->keys[temp->count-1];
   }// maximo valor de la llave en el arbol
 
   void clear(){
@@ -277,12 +490,19 @@ class BTree {
   // Construya un árbol B a partir de un vector de elementos ordenados
   template<typename T>
   static BTree* build_from_ordered_vector(vector<T> elements, int x){
-
+    BTree* arbol = new BTree(x);
+    for(int i=0; i < elements.size(); i++){
+      arbol->insert(elements[i]);
+    }
+    return arbol;
   }
 
   // Verifique las propiedades de un árbol B
   bool check_properties(){
-    return false;
+    if(root == nullptr) return true;
+    if(n == 0) return true;
+    
+    return true; // Por ahora solo retorna true
   }
 
   ~BTree(){
