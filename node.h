@@ -8,13 +8,13 @@ struct Node {
   // array de keys
   TK* keys;
   // array de punteros a hijos
-  Node** children;
+  Node<TK>** children;
   // cantidad de keys
   int count;
   // indicador de nodo hoja
   bool leaf;
 
-  Node() : keys(nullptr), children(nullptr), count(0) {}
+  Node() : keys(nullptr), children(nullptr), count(0), leaf(true){}
   Node(int M) {
     keys = new TK[M - 1];
     children = new Node<TK>*[M];
@@ -23,7 +23,19 @@ struct Node {
   }
 
   void killSelf() {
-    // TODO
+    // si no es hoja se borran los children 
+    if (!leaf) {
+      for (int i = 0; i <= count; i++) {
+        if (children[i] != nullptr) {
+          children[i]->killSelf();
+        }
+      }
+      delete[] children;
+    }
+    // delete del array de keys
+    if (keys != nullptr) {
+      delete[] keys;
+    }
   }
 };
 
